@@ -7,16 +7,16 @@ import { Providers } from "./providers"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Paycrypt Admin Dashboard",
-  description: "Admin dashboard for Paycrypt smart contract management",
+  title: "Paycrypt Team Dashboard",
+  description: "Admin dashboard for the Paycrypt team to manage smart contracts.",
     generator: 'v0.dev'
 }
 
 export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode
-}) {
+}>) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>

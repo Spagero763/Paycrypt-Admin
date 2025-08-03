@@ -1,30 +1,56 @@
-# Smart contract dashboard
+# Paycrypt Admin Dashboard
 
-*Automatically synced with your [v0.dev](https://v0.dev) deployments*
+This is the official admin dashboard for Paycrypt team members to manage smart contract operations and payment processing.
 
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/navigatorabraham-gmailcoms-projects/v0-smart-contract-dashboard)
-[![Built with v0](https://img.shields.io/badge/Built%20with-v0.dev-black?style=for-the-badge)](https://v0.dev/chat/projects/sy6dvYayTb6)
+## Features
 
-## Overview
+- **Dashboard Home**: View key stats like Total Volume, Total Successful Orders, Total Failed Orders, and Order Counter.
+- **Order Tools**: Decode transaction input to extract order IDs and manage order statuses (mark successful/failed).
+- **Manage Contract**: Grouped read/write functions for:
+  - Token Management (add/remove supported tokens, set limits)
+  - User Management (add/remove from blacklist)
+  - Admin Management (add/remove admins)
+  - Emergency Controls (emergency withdraw, pause/unpause contract)
+- **UI & UX**:
+  - Organized into clear pages/sections.
+  - Supports MetaMask and WalletConnect for signing.
+  - Supports Base, Polygon, and Ethereum chains.
+  - Auto-loads contract using ABI + address.
+  - Light + dark mode.
 
-This repository will stay in sync with your deployed chats on [v0.dev](https://v0.dev).
-Any changes you make to your deployed app will be automatically pushed to this repository from [v0.dev](https://v0.dev).
+## Getting Started
+
+1.  **Clone the repository**:
+    \`\`\`bash
+    git clone https://github.com/16navigabraham/Paycrypt-Admin.git
+    cd Paycrypt-Admin
+    \`\`\`
+2.  **Install dependencies**:
+    \`\`\`bash
+    pnpm install
+    \`\`\`
+3.  **Environment Variables**:
+    Create a `.env.local` file in the root directory and add your WalletConnect Project ID (optional, but recommended for full wallet support):
+    \`\`\`
+    NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=YOUR_WALLETCONNECT_PROJECT_ID
+    \`\`\`
+    You can get a Project ID from [WalletConnect Cloud](https://cloud.walletconnect.com).
+
+4.  **Run the development server**:
+    \`\`\`bash
+    pnpm dev
+    \`\`\`
+    Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Deployment
 
-Your project is live at:
+This project is designed to be deployed on Vercel. Ensure your environment variables are configured on Vercel for production deployments.
 
-**[https://vercel.com/navigatorabraham-gmailcoms-projects/v0-smart-contract-dashboard](https://vercel.com/navigatorabraham-gmailcoms-projects/v0-smart-contract-dashboard)**
+## Contract Information
 
-## Build your app
+-   **Contract Address**: `0x0574A0941Ca659D01CF7370E37492bd2DF43128d` (Defined in `lib/contract.ts`)
+-   **Supported Networks**: Base, Polygon, Ethereum
 
-Continue building your app on:
+## Contributing
 
-**[https://v0.dev/chat/projects/sy6dvYayTb6](https://v0.dev/chat/projects/sy6dvYayTb6)**
-
-## How It Works
-
-1. Create and modify your project using [v0.dev](https://v0.dev)
-2. Deploy your chats from the v0 interface
-3. Changes are automatically pushed to this repository
-4. Vercel deploys the latest version from this repository
+Feel free to contribute to this project by opening issues or pull requests.
