@@ -1,59 +1,76 @@
 "use client"
 
-import type React from "react"
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
-import { Button } from "./ui/button"
-import { AlertCircle } from "lucide-react"
+import React from "react"
+import { useAccount } from "wagmi"
+import { toast } from "@/hooks/use-toast"
 
 interface WalletErrorBoundaryProps {
   children: React.ReactNode
 }
 
-export function WalletErrorBoundary({ children }: WalletErrorBoundaryProps) {
-  const [hasError, setHasError] = useState(false)
-  const [error, setError] = useState<Error | null>(null)
+interface WalletErrorBoundaryState {
+  hasError: boolean
+  errorMessage: string
+}
 
-  useEffect(() => {
-    const handleError = (event: ErrorEvent) => {
-      if (event.error && event.error.message.includes("No injected provider")) {
-        setHasError(true)
-        setError(event.error)
-        event.preventDefault() // Prevent default browser error handling
-      }
-    }
-
-    window.addEventListener("error", handleError)
-
-    return () => {
-      window.removeEventListener("error", handleError)
-    }
-  }, [])
-
-  if (hasError) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
-        <Card className="w-full max-w-md mx-auto text-center">
-          <CardHeader>
-            <CardTitle className="text-red-500 flex items-center justify-center gap-2">
-              <AlertCircle className="h-6 w-6" />
-              Wallet Error
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-gray-700 dark:text-gray-300">
-              It looks like there's an issue with your wallet connection or provider.
-            </p>
-            {error && <p className="text-sm text-gray-500 dark:text-gray-400">Error: {error.message}</p>}
-            <p className="text-gray-700 dark:text-gray-300">
-              Please ensure you have a wallet extension (like MetaMask) installed and enabled.
-            </p>
-            <Button onClick={() => window.location.reload()}>Reload Page</Button>
-          </CardContent>
-        </Card>
-      </div>
-    )
+class WalletErrorBoundary extends React.Component<WalletErrorBoundaryProps, WalletErrorBoundaryState> {
+  constructor(props: WalletErrorBoundaryProps) {
+    super(props)
+    this.state = { hasError: false, errorMessage: "" }
   }
 
-  return <>{children}</>
+  static getDerivedStateFromError(error: Error): WalletErrorBoundaryState {
+    // Update state so the next render will show the fallback UI.
+    return { hasError: true, errorMessage: error.message }
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    // You can log the error to an error reporting service
+    console.error("Wallet Error Boundary caught an error:", error, errorInfo)
+    toast({
+      title: "Wallet Error",
+      description: `An error occurred with your wallet connection: ${error.message}`,
+      variant: "destructive",
+    })
+  }
+
+  render() {
+    if (this.state.hasError) {
+      // You can render any custom fallback UI
+      return (
+        <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
+          <h1 className="text-2xl font-bold text-destructive">Wallet Connection Error</h1>
+          <p className="mt-2 text-muted-foreground">
+            Something went wrong with your wallet connection. Please try reconnecting or refreshing the page.
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">Error: {this.state.errorMessage}</p>
+          <button
+            className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-md"
+            onClick={() => this.setState({ hasError: false, errorMessage: "" })}
+          >
+            Try Again
+          </button>
+        </div>
+      )
+    }
+
+    return this.props.children
+  }
 }
+
+// Wrapper component to use useAccount hook with class component ErrorBoundary
+export function WalletErrorBoundaryWrapper({ children }: WalletErrorBoundaryProps) {
+  const { isDisconnected } = useAccount()
+
+  // Reset error boundary state if wallet disconnects after an error
+  const [key, setKey] = React.useState(0)
+  React.useEffect(() => {
+    if (isDisconnected) {
+      setKey((prevKey) => prevKey + 1) // Force remount of error boundary
+    }
+  }, [isDisconnected])
+
+  return <WalletErrorBoundary key={key}>{children}</WalletErrorBoundary>
+}
+
+export { WalletErrorBoundary }

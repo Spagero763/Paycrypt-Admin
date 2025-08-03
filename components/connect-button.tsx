@@ -1,31 +1,85 @@
 "use client"
 
-import { useAccount, useConnect, useDisconnect } from "wagmi"
-import { InjectedConnector } from "wagmi/connectors/injected"
+import { ConnectButton as RainbowConnectButton } from "@rainbow-me/rainbowkit"
 import { Button } from "@/components/ui/button"
-import { shortenAddress } from "@/lib/utils"
 
 export function ConnectButton() {
-  const { address, isConnected } = useAccount()
-  const { connect } = useConnect({
-    connector: new InjectedConnector(),
-  })
-  const { disconnect } = useDisconnect()
-
-  if (isConnected) {
-    return (
-      <div className="flex items-center gap-2">
-        <span className="text-sm font-medium">Connected: {shortenAddress(address!)}</span>
-        <Button onClick={() => disconnect()} size="sm" variant="outline">
-          Disconnect
-        </Button>
-      </div>
-    )
-  }
-
   return (
-    <Button onClick={() => connect()} size="sm">
-      Connect Wallet
-    </Button>
+    <RainbowConnectButton.Custom>
+      {({ account, chain, openAccountModal, openChainModal, openConnectModal, authenticationStatus, mounted }) => {
+        const ready = mounted && authenticationStatus !== "loading"
+        const connected =
+          ready && account && chain && (!authenticationStatus || authenticationStatus === "authenticated")
+
+        return (
+          <div
+            {...(!ready && {
+              "aria-hidden": true,
+              style: {
+                opacity: 0,
+                pointerEvents: "none",
+                userSelect: "none",
+              },
+            })}
+          >
+            {(() => {
+              if (!connected) {
+                return (
+                  <Button onClick={openConnectModal} type="button">
+                    Connect Wallet
+                  </Button>
+                )
+              }
+
+              if (chain.unsupported) {
+                return (
+                  <Button onClick={openChainModal} type="button" variant="destructive">
+                    Wrong network
+                  </Button>
+                )
+              }
+
+              return (
+                <div style={{ display: "flex", gap: 12 }}>
+                  <Button
+                    onClick={openChainModal}
+                    style={{ display: "flex", alignItems: "center" }}
+                    type="button"
+                    variant="outline"
+                  >
+                    {chain.has && (
+                      <div
+                        style={{
+                          background: chain.iconBackground,
+                          width: 12,
+                          height: 12,
+                          borderRadius: 999,
+                          overflow: "hidden",
+                          marginRight: 4,
+                        }}
+                      >
+                        {chain.icon && (
+                          <img
+                            alt={chain.name}
+                            src={chain.icon || "/placeholder.png"}
+                            style={{ width: 12, height: 12 }}
+                          />
+                        )}
+                      </div>
+                    )}
+                    {chain.name}
+                  </Button>
+
+                  <Button onClick={openAccountModal} type="button" variant="outline">
+                    {account.displayName}
+                    {account.displayBalance ? ` (${account.displayBalance})` : ""}
+                  </Button>
+                </div>
+              )
+            })()}
+          </div>
+        )
+      }}
+    </RainbowConnectButton.Custom>
   )
 }

@@ -1,15 +1,13 @@
-"use client"
-
 import { DashboardLayout } from "@/components/dashboard-layout"
-import { ProtectedRoute } from "@/components/protected-route"
 import { UserManagement } from "@/components/user-management"
 
 export default function UsersPage() {
   return (
-    <ProtectedRoute>
-      <DashboardLayout>
+    <DashboardLayout>
+      <div className="flex-1 space-y-4 p-8 pt-6">
+        <h2 className="text-3xl font-bold tracking-tight">User Management</h2>
         <UserManagement />
-      </DashboardLayout>
-    </ProtectedRoute>
+      </div>
+    </DashboardLayout>
   )
 }

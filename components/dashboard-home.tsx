@@ -1,204 +1,141 @@
 "use client"
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { RefreshCwIcon } from "lucide-react"
-import { useState, useEffect, useCallback } from "react"
-import { useContractRead } from "@/lib/contract"
-import { useAccount } from "wagmi"
-import { shortenAddress } from "@/lib/utils"
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
+import { useAccount, useReadContract } from "wagmi"
+import { CONTRACT_ADDRESS, CONTRACT_ABI } from "@/lib/contract"
 
-export function DashboardHomeContent() {
-  const { address, isConnected } = useAccount()
+export function DashboardHome() {
+  const { address: userAddress } = useAccount()
 
-  // State for individual metric loading
-  const [loadingTotalSupply, setLoadingTotalSupply] = useState(false)
-  const [loadingBalance, setLoadingBalance] = useState(false)
-  const [loadingOwner, setLoadingOwner] = useState(false)
-  const [loadingName, setLoadingName] = useState(false)
-  const [loadingSymbol, setLoadingSymbol] = useState(false)
+  // Read user's token balance
+  const { data: userBalance, isLoading: isBalanceLoading } = useReadContract({
+    address: CONTRACT_ADDRESS,
+    abi: CONTRACT_ABI,
+    functionName: "balanceOf",
+    args: [userAddress as `0x${string}`],
+    query: {
+      enabled: !!userAddress, // Only fetch if userAddress is available
+    },
+  })
 
-  // Fetch contract data
-  const { data: name, refetch: refetchName } = useContractRead("name")
-  const { data: symbol, refetch: refetchSymbol } = useContractRead("symbol")
-  const { data: totalSupply, refetch: refetchTotalSupply } = useContractRead("totalSupply")
-  const { data: owner, refetch: refetchOwner } = useContractRead("owner")
-  const { data: userBalance, refetch: refetchUserBalance } = useContractRead("balanceOf", [address])
+  // Read total orders
+  const { data: totalOrders, isLoading: isTotalOrdersLoading } = useReadContract({
+    address: CONTRACT_ADDRESS,
+    abi: CONTRACT_ABI,
+    functionName: "totalOrders",
+  })
 
-  // Function to refetch all data
-  const refetchAllData = useCallback(async () => {
-    if (!isConnected) return
+  // Read successful orders
+  const { data: successfulOrders, isLoading: isSuccessfulOrdersLoading } = useReadContract({
+    address: CONTRACT_ADDRESS,
+    abi: CONTRACT_ABI,
+    functionName: "successfulOrders",
+  })
 
-    setLoadingName(true)
-    setLoadingSymbol(true)
-    setLoadingTotalSupply(true)
-    setLoadingOwner(true)
-    setLoadingBalance(true)
-
-    await Promise.all([refetchName(), refetchSymbol(), refetchTotalSupply(), refetchOwner(), refetchUserBalance()])
-
-    setLoadingName(false)
-    setLoadingSymbol(false)
-    setLoadingTotalSupply(false)
-    setLoadingOwner(false)
-    setLoadingBalance(false)
-  }, [isConnected, refetchName, refetchSymbol, refetchTotalSupply, refetchOwner, refetchUserBalance])
-
-  // Initial data fetch on component mount and when wallet connects
-  useEffect(() => {
-    if (isConnected) {
-      refetchAllData()
-    }
-  }, [isConnected, refetchAllData])
+  // Read failed orders
+  const { data: failedOrders, isLoading: isFailedOrdersLoading } = useReadContract({
+    address: CONTRACT_ADDRESS,
+    abi: CONTRACT_ABI,
+    functionName: "failedOrders",
+  })
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Contract Name</CardTitle>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => {
-              setLoadingName(true)
-              refetchName().finally(() => setLoadingName(false))
-            }}
-            disabled={loadingName || !isConnected}
+          <CardTitle className="text-sm font-medium">Your Token Balance</CardTitle>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+            className="h-4 w-4 text-muted-foreground"
           >
-            <RefreshCwIcon className={`h-4 w-4 ${loadingName ? "animate-spin" : ""}`} />
-            <span className="sr-only">Refresh Name</span>
-          </Button>
+            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+          </svg>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">
-            {isConnected ? (loadingName ? "Loading..." : name || "N/A") : "Connect Wallet"}
-          </div>
-          <p className="text-xs text-muted-foreground">Name of the deployed contract.</p>
+          <div className="text-2xl font-bold">{isBalanceLoading ? "Loading..." : userBalance?.toString() || "0"}</div>
+          <p className="text-xs text-muted-foreground">Your current token holdings</p>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Contract Symbol</CardTitle>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => {
-              setLoadingSymbol(true)
-              refetchSymbol().finally(() => setLoadingSymbol(false))
-            }}
-            disabled={loadingSymbol || !isConnected}
+          <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+            className="h-4 w-4 text-muted-foreground"
           >
-            <RefreshCwIcon className={`h-4 w-4 ${loadingSymbol ? "animate-spin" : ""}`} />
-            <span className="sr-only">Refresh Symbol</span>
-          </Button>
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+          </svg>
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
-            {isConnected ? (loadingSymbol ? "Loading..." : symbol || "N/A") : "Connect Wallet"}
+            {isTotalOrdersLoading ? "Loading..." : totalOrders?.toString() || "0"}
           </div>
-          <p className="text-xs text-muted-foreground">Symbol of the contract's token.</p>
+          <p className="text-xs text-muted-foreground">Total orders processed by the contract</p>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Supply</CardTitle>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => {
-              setLoadingTotalSupply(true)
-              refetchTotalSupply().finally(() => setLoadingTotalSupply(false))
-            }}
-            disabled={loadingTotalSupply || !isConnected}
+          <CardTitle className="text-sm font-medium">Successful Orders</CardTitle>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+            className="h-4 w-4 text-muted-foreground"
           >
-            <RefreshCwIcon className={`h-4 w-4 ${loadingTotalSupply ? "animate-spin" : ""}`} />
-            <span className="sr-only">Refresh Total Supply</span>
-          </Button>
+            <path d="M22 12h-4l-3 9L9 3l-4 9H2" />
+          </svg>
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
-            {isConnected
-              ? loadingTotalSupply
-                ? "Loading..."
-                : totalSupply !== undefined
-                  ? totalSupply.toString()
-                  : "N/A"
-              : "Connect Wallet"}
+            {isSuccessfulOrdersLoading ? "Loading..." : successfulOrders?.toString() || "0"}
           </div>
-          <p className="text-xs text-muted-foreground">Total tokens in circulation.</p>
+          <p className="text-xs text-muted-foreground">Orders successfully completed</p>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Your Balance</CardTitle>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => {
-              setLoadingBalance(true)
-              refetchUserBalance().finally(() => setLoadingBalance(false))
-            }}
-            disabled={loadingBalance || !isConnected}
+          <CardTitle className="text-sm font-medium">Failed Orders</CardTitle>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+            className="h-4 w-4 text-muted-foreground"
           >
-            <RefreshCwIcon className={`h-4 w-4 ${loadingBalance ? "animate-spin" : ""}`} />
-            <span className="sr-only">Refresh Balance</span>
-          </Button>
+            <circle cx="12" cy="12" r="10" />
+            <line x1="15" y1="9" x2="9" y2="15" />
+            <line x1="9" y1="9" x2="15" y2="15" />
+          </svg>
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
-            {isConnected
-              ? loadingBalance
-                ? "Loading..."
-                : userBalance !== undefined
-                  ? userBalance.toString()
-                  : "N/A"
-              : "Connect Wallet"}
+            {isFailedOrdersLoading ? "Loading..." : failedOrders?.toString() || "0"}
           </div>
-          <p className="text-xs text-muted-foreground">Your token balance.</p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Contract Owner</CardTitle>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => {
-              setLoadingOwner(true)
-              refetchOwner().finally(() => setLoadingOwner(false))
-            }}
-            disabled={loadingOwner || !isConnected}
-          >
-            <RefreshCwIcon className={`h-4 w-4 ${loadingOwner ? "animate-spin" : ""}`} />
-            <span className="sr-only">Refresh Owner</span>
-          </Button>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">
-            {isConnected ? (loadingOwner ? "Loading..." : owner ? shortenAddress(owner) : "N/A") : "Connect Wallet"}
-          </div>
-          <p className="text-xs text-muted-foreground">Address of the contract owner.</p>
-        </CardContent>
-      </Card>
-
-      <Card className="col-span-full flex items-center justify-center">
-        <CardContent className="flex flex-col items-center justify-center p-6">
-          <Button
-            onClick={refetchAllData}
-            disabled={
-              !isConnected || loadingName || loadingSymbol || loadingTotalSupply || loadingBalance || loadingOwner
-            }
-          >
-            <RefreshCwIcon
-              className={`mr-2 h-4 w-4 ${loadingName || loadingSymbol || loadingTotalSupply || loadingBalance || loadingOwner ? "animate-spin" : ""}`}
-            />
-            Refresh All Data
-          </Button>
-          <p className="text-xs text-muted-foreground mt-2">Click to refresh all contract data.</p>
+          <p className="text-xs text-muted-foreground">Orders that did not complete successfully</p>
         </CardContent>
       </Card>
     </div>

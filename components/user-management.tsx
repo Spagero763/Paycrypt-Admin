@@ -1,55 +1,106 @@
 "use client"
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { RefreshCwIcon } from "lucide-react"
+import React from "react"
+
 import { useState } from "react"
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
+import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi"
+import { toast } from "@/hooks/use-toast"
+import { CONTRACT_ADDRESS, CONTRACT_ABI } from "@/lib/contract"
 
 export function UserManagement() {
-  const [users, setUsers] = useState<any[]>([])
-  const [isLoading, setIsLoading] = useState(false)
+  const [userAddress, setUserAddress] = useState("")
+  const [roleToSet, setRoleToSet] = useState("")
 
-  const fetchUsers = async () => {
-    setIsLoading(true)
-    // Simulate fetching user data from a smart contract or API
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-    setUsers([
-      { address: "0xabc...123", role: "Admin", balance: "10 ETH" },
-      { address: "0xdef...456", role: "User", balance: "0.5 ETH" },
-    ])
-    setIsLoading(false)
+  // Read user role
+  const { data: userRole, refetch: refetchUserRole } = useReadContract({
+    address: CONTRACT_ADDRESS,
+    abi: CONTRACT_ABI,
+    functionName: "getUserRole",
+    args: [userAddress as `0x${string}`],
+    query: {
+      enabled: userAddress.length === 42, // Only fetch if address is valid
+    },
+  })
+
+  // Write contract for setting role
+  const { writeContract: writeSetRole, data: setRoleHash } = useWriteContract()
+  const { isLoading: isSettingRole, isSuccess: isSetRoleConfirmed } = useWaitForTransactionReceipt({
+    hash: setRoleHash,
+  })
+
+  const handleSetUserRole = () => {
+    if (!userAddress || userAddress.length !== 42) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid Ethereum address.",
+        variant: "destructive",
+      })
+      return
+    }
+    if (!roleToSet) {
+      toast({
+        title: "Error",
+        description: "Please enter a role to set.",
+        variant: "destructive",
+      })
+      return
+    }
+    writeSetRole({
+      address: CONTRACT_ADDRESS,
+      abi: CONTRACT_ABI,
+      functionName: "setUserRole",
+      args: [userAddress as `0x${string}`, roleToSet],
+    })
   }
 
+  React.useEffect(() => {
+    if (isSetRoleConfirmed) {
+      toast({
+        title: "User Role Updated",
+        description: `Role for ${userAddress} set to ${roleToSet}. Transaction hash: ${setRoleHash}`,
+      })
+      setUserAddress("")
+      setRoleToSet("")
+      refetchUserRole()
+    }
+  }, [isSetRoleConfirmed, setRoleHash, userAddress, roleToSet, refetchUserRole])
+
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">User Management</CardTitle>
-        <Button variant="ghost" size="icon" onClick={fetchUsers} disabled={isLoading}>
-          <RefreshCwIcon className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
-          <span className="sr-only">Refresh Users</span>
-        </Button>
+    <Card className="w-full max-w-md">
+      <CardHeader>
+        <CardTitle>User Management</CardTitle>
       </CardHeader>
-      <CardContent>
-        <CardDescription>Manage and view users interacting with your contract.</CardDescription>
-        {isLoading ? (
-          <div className="text-center py-4">Loading users...</div>
-        ) : users.length > 0 ? (
-          <div className="mt-4 space-y-2">
-            {users.map((user) => (
-              <div key={user.address} className="flex justify-between items-center p-2 border rounded-md">
-                <div>
-                  <p className="font-semibold">Address: {user.address}</p>
-                  <p className="text-sm text-muted-foreground">Role: {user.role}</p>
-                </div>
-                <div className="text-right">
-                  <p>Balance: {user.balance}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-4 text-muted-foreground">No users found.</div>
-        )}
+      <CardContent className="grid gap-4">
+        <div className="grid gap-2">
+          <Label htmlFor="userAddress">User Address</Label>
+          <Input
+            id="userAddress"
+            placeholder="0x..."
+            value={userAddress}
+            onChange={(e) => setUserAddress(e.target.value)}
+            onBlur={() => userAddress.length === 42 && refetchUserRole()}
+          />
+          {userAddress.length === 42 && (
+            <p className="text-sm font-medium">Current Role: {userRole ? userRole : "Loading..."}</p>
+          )}
+        </div>
+
+        <div className="grid gap-2">
+          <Label htmlFor="roleToSet">Set User Role</Label>
+          <Input
+            id="roleToSet"
+            placeholder="e.g., admin, user, moderator"
+            value={roleToSet}
+            onChange={(e) => setRoleToSet(e.target.value)}
+          />
+          <Button onClick={handleSetUserRole} disabled={isSettingRole}>
+            {isSettingRole ? "Setting Role..." : "Set Role"}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   )
