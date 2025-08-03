@@ -1,5 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  webpack: (config) => {
+    config.externals.push({
+      'pino-pretty': 'commonjs pino-pretty',
+      lokijs: 'commonjs lokijs',
+      'encoding': 'commonjs encoding',
+    })
+    return config
+  },
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -9,7 +17,6 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // Additional configurations can be added here
 }
 
 export default nextConfig

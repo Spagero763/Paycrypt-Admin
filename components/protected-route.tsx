@@ -5,52 +5,33 @@ import type React from "react"
 import { useAccount } from "wagmi"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import Link from "next/link"
-import { Lock } from "lucide-react"
-import { Loader2 } from "lucide-react" // Loader2 variable is declared here
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
+import { Button } from "./ui/button"
+import { ConnectButton } from "./connect-button"
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isConnected, isConnecting } = useAccount()
+  const { isConnected } = useAccount()
   const router = useRouter()
 
   useEffect(() => {
-    if (!isConnecting && !isConnected) {
-      router.push("/")
+    if (!isConnected) {
+      // Optionally redirect to a landing page or show a message
+      // router.push('/');
     }
-  }, [isConnected, isConnecting, router])
-
-  if (isConnecting) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950">
-        <Card className="w-full max-w-md text-center">
-          <CardHeader>
-            <CardTitle className="text-2xl font-bold">Connecting Wallet...</CardTitle>
-            <CardDescription>Please wait while we connect to your wallet.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex justify-center">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
+  }, [isConnected, router])
 
   if (!isConnected) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950">
-        <Card className="w-full max-w-md text-center">
+      <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
+        <Card className="w-full max-w-md mx-auto">
           <CardHeader>
-            <CardTitle className="text-2xl font-bold text-red-500">Access Denied</CardTitle>
-            <CardDescription>You must connect your wallet to access the dashboard.</CardDescription>
+            <CardTitle className="text-center">Wallet Required</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <Lock className="h-16 w-16 text-red-400 mx-auto" />
-            <Button asChild className="w-full">
-              <Link href="/">Go to Landing Page</Link>
+          <CardContent className="text-center space-y-4">
+            <p className="text-gray-600 dark:text-gray-400">Please connect your wallet to access the dashboard.</p>
+            <ConnectButton />
+            <Button variant="link" onClick={() => router.push("/")}>
+              Go to Home
             </Button>
           </CardContent>
         </Card>

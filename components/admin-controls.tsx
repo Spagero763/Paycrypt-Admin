@@ -4,62 +4,63 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
+import { useWriteContract, useWaitForTransactionReceipt, useReadContract } from "wagmi"
+import { CONTRACT_ADDRESS, CONTRACT_ABI } from "@/lib/contract"
 import { useState, useEffect } from "react"
-import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi"
-import { CONTRACT_ABI, CONTRACT_ADDRESS } from "@/lib/contract"
-import { toast } from "sonner"
-import { Loader2 } from "lucide-react"
+import { parseUnits } from "viem"
+import { useToast } from "@/components/ui/use-toast"
 
 export function AdminControls() {
   const [adminAddress, setAdminAddress] = useState("")
-  const [devWalletAddress, setDevWalletAddress] = useState("")
-  const [emergencyWithdrawTokenAddress, setEmergencyWithdrawTokenAddress] = useState("")
-  const [emergencyWithdrawAmount, setEmergencyWithdrawAmount] = useState("")
+  const [withdrawTokenAddress, setWithdrawTokenAddress] = useState("")
+  const [withdrawAmount, setWithdrawAmount] = useState("")
+  const [newOwnerAddress, setNewOwnerAddress] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const { toast } = useToast()
 
-  const { writeContract: addAdmin, data: hashAddAdmin, isPending: isAddingAdmin } = useWriteContract()
-  const { writeContract: removeAdmin, data: hashRemoveAdmin, isPending: isRemovingAdmin } = useWriteContract()
-  const { writeContract: setDevWallet, data: hashSetDevWallet, isPending: isSettingDevWallet } = useWriteContract()
+  const { writeContract, data: hash, isPending: isWritePending, error: writeError } = useWriteContract()
   const {
-    writeContract: emergencyWithdraw,
-    data: hashEmergencyWithdraw,
-    isPending: isEmergencyWithdrawing,
-  } = useWriteContract()
-  const { writeContract: pauseContract, data: hashPause, isPending: isPausing } = useWriteContract()
-  const { writeContract: unpauseContract, data: hashUnpause, isPending: isUnpausing } = useWriteContract()
+    isLoading: isConfirming,
+    isSuccess: isConfirmed,
+    error: confirmError,
+  } = useWaitForTransactionReceipt({ hash })
 
-  const { data: pausedStatus, isLoading: isLoadingPausedStatus } = useReadContract({
-    abi: CONTRACT_ABI,
+  const { data: isPaused, isLoading: isLoadingPaused } = useReadContract({
     address: CONTRACT_ADDRESS,
+    abi: CONTRACT_ABI,
     functionName: "paused",
   })
 
-  const { isLoading: isLoadingAddAdminTx, isSuccess: isAddAdminConfirmed } = useWaitForTransactionReceipt({
-    hash: hashAddAdmin,
-  })
-  const { isLoading: isLoadingRemoveAdminTx, isSuccess: isRemoveAdminConfirmed } = useWaitForTransactionReceipt({
-    hash: hashRemoveAdmin,
-  })
-  const { isLoading: isLoadingSetDevWalletTx, isSuccess: isSetDevWalletConfirmed } = useWaitForTransactionReceipt({
-    hash: hashSetDevWallet,
-  })
-  const { isLoading: isLoadingEmergencyWithdrawTx, isSuccess: isEmergencyWithdrawConfirmed } =
-    useWaitForTransactionReceipt({
-      hash: hashEmergencyWithdraw,
-    })
-  const { isLoading: isLoadingPauseTx, isSuccess: isPauseConfirmed } = useWaitForTransactionReceipt({
-    hash: hashPause,
-  })
-  const { isLoading: isLoadingUnpauseTx, isSuccess: isUnpauseConfirmed } = useWaitForTransactionReceipt({
-    hash: hashUnpause,
-  })
+  useEffect(() => {
+    if (hash) {
+      toast.info(`Transaction sent: ${hash.slice(0, 6)}...${hash.slice(-4)}`)
+    }
+  }, [hash])
+
+  useEffect(() => {
+    if (isConfirmed) {
+      toast.success("Transaction confirmed successfully!")
+      setAdminAddress("")
+      setWithdrawTokenAddress("")
+      setWithdrawAmount("")
+    }
+  }, [isConfirmed])
+
+  useEffect(() => {
+    if (writeError) {
+      toast.error(`Write error: ${writeError.shortMessage || writeError.message}`)
+    }
+    if (confirmError) {
+      toast.error(`Confirmation error: ${confirmError.shortMessage || confirmError.message}`)
+    }
+  }, [writeError, confirmError])
 
   const handleAddAdmin = () => {
     if (!adminAddress) {
       toast.error("Please enter an admin address.")
       return
     }
-    addAdmin({
+    writeContract({
       address: CONTRACT_ADDRESS,
       abi: CONTRACT_ABI,
       functionName: "addAdmin",
@@ -72,7 +73,7 @@ export function AdminControls() {
       toast.error("Please enter an admin address.")
       return
     }
-    removeAdmin({
+    writeContract({
       address: CONTRACT_ADDRESS,
       abi: CONTRACT_ABI,
       functionName: "removeAdmin",
@@ -80,186 +81,167 @@ export function AdminControls() {
     })
   }
 
-  const handleSetDevWallet = () => {
-    if (!devWalletAddress) {
-      toast.error("Please enter a new dev wallet address.")
-      return
-    }
-    setDevWallet({
-      address: CONTRACT_ADDRESS,
-      abi: CONTRACT_ABI,
-      functionName: "setDevWallet",
-      args: [devWalletAddress as `0x${string}`],
-    })
-  }
-
   const handleEmergencyWithdraw = () => {
-    if (!emergencyWithdrawTokenAddress || !emergencyWithdrawAmount) {
+    if (!withdrawTokenAddress || !withdrawAmount) {
       toast.error("Please enter token address and amount for emergency withdrawal.")
       return
     }
-    // Assuming 18 decimals for the amount for simplicity, adjust if needed
-    emergencyWithdraw({
-      address: CONTRACT_ADDRESS,
-      abi: CONTRACT_ABI,
-      functionName: "emergencyWithdrawToken",
-      args: [emergencyWithdrawTokenAddress as `0x${string}`, BigInt(emergencyWithdrawAmount)],
-    })
+    try {
+      // Assuming 18 decimals for simplicity, adjust if needed for specific tokens
+      const amountInWei = parseUnits(withdrawAmount, 18)
+      writeContract({
+        address: CONTRACT_ADDRESS,
+        abi: CONTRACT_ABI,
+        functionName: "emergencyWithdrawToken",
+        args: [withdrawTokenAddress as `0x${string}`, amountInWei],
+      })
+    } catch (e: any) {
+      toast.error(`Invalid amount: ${e.message}`)
+    }
   }
 
   const handlePauseContract = () => {
-    pauseContract({
+    writeContract({
       address: CONTRACT_ADDRESS,
       abi: CONTRACT_ABI,
       functionName: "pause",
-      args: [],
     })
   }
 
   const handleUnpauseContract = () => {
-    unpauseContract({
+    writeContract({
       address: CONTRACT_ADDRESS,
       abi: CONTRACT_ABI,
       functionName: "unpause",
-      args: [],
     })
   }
 
-  useEffect(() => {
-    if (isAddAdminConfirmed) {
-      toast.success("Admin added successfully!", { description: `Tx Hash: ${hashAddAdmin}` })
-      setAdminAddress("")
+  const handleTransferOwnership = async () => {
+    if (!newOwnerAddress) {
+      toast({
+        title: "Error",
+        description: "Please enter a new owner address.",
+        variant: "destructive",
+      })
+      return
     }
-    if (isRemoveAdminConfirmed) {
-      toast.success("Admin removed successfully!", { description: `Tx Hash: ${hashRemoveAdmin}` })
-      setAdminAddress("")
-    }
-    if (isSetDevWalletConfirmed) {
-      toast.success("Dev wallet updated!", { description: `Tx Hash: ${hashSetDevWallet}` })
-      setDevWalletAddress("")
-    }
-    if (isEmergencyWithdrawConfirmed) {
-      toast.success("Emergency withdrawal successful!", { description: `Tx Hash: ${hashEmergencyWithdraw}` })
-      setEmergencyWithdrawTokenAddress("")
-      setEmergencyWithdrawAmount("")
-    }
-    if (isPauseConfirmed) {
-      toast.success("Contract paused!", { description: `Tx Hash: ${hashPause}` })
-    }
-    if (isUnpauseConfirmed) {
-      toast.success("Contract unpaused!", { description: `Tx Hash: ${hashUnpause}` })
-    }
-  }, [
-    isAddAdminConfirmed,
-    isRemoveAdminConfirmed,
-    isSetDevWalletConfirmed,
-    isEmergencyWithdrawConfirmed,
-    isPauseConfirmed,
-    isUnpauseConfirmed,
-    hashAddAdmin,
-    hashRemoveAdmin,
-    hashSetDevWallet,
-    hashEmergencyWithdraw,
-    hashPause,
-    hashUnpause,
-  ])
+
+    setIsLoading(true)
+    // Simulate contract interaction for transferring ownership
+    await new Promise((resolve) => setTimeout(resolve, 2000))
+    toast({
+      title: "Success",
+      description: `Ownership transferred to ${newOwnerAddress}. (Simulated)`,
+    })
+    setNewOwnerAddress("")
+    setIsLoading(false)
+  }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Admin Controls</CardTitle>
-        <CardDescription>Manage contract administrators, dev wallet, and emergency functions.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Admin Management */}
-        <div className="space-y-2">
-          <h3 className="text-lg font-semibold">Admin Management</h3>
-          <Label htmlFor="adminAddress">Admin Address</Label>
-          <Input
-            id="adminAddress"
-            placeholder="0x..."
-            value={adminAddress}
-            onChange={(e) => setAdminAddress(e.target.value)}
-          />
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <Button onClick={handleAddAdmin} disabled={isAddingAdmin || isLoadingAddAdminTx}>
-              {isAddingAdmin || isLoadingAddAdminTx ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+    <div className="grid gap-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Admin Management</CardTitle>
+          <CardDescription>Add or remove addresses with admin privileges.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-2">
+            <Label htmlFor="adminAddress">Admin Address</Label>
+            <Input
+              id="adminAddress"
+              placeholder="0x..."
+              value={adminAddress}
+              onChange={(e) => setAdminAddress(e.target.value)}
+            />
+          </div>
+          <div className="flex gap-4">
+            <Button onClick={handleAddAdmin} disabled={isWritePending || isConfirming}>
               Add Admin
             </Button>
-            <Button onClick={handleRemoveAdmin} disabled={isRemovingAdmin || isLoadingRemoveAdminTx}>
-              {isRemovingAdmin || isLoadingRemoveAdminTx ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            <Button onClick={handleRemoveAdmin} disabled={isWritePending || isConfirming} variant="outline">
               Remove Admin
             </Button>
           </div>
-        </div>
+        </CardContent>
+      </Card>
 
-        <Separator />
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-medium">Emergency Controls</CardTitle>
+          <CardDescription>
+            Perform critical operations like emergency withdrawals or pausing the contract.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Emergency Withdraw</h3>
+            <div className="grid gap-2">
+              <Label htmlFor="withdrawTokenAddress">Token Address</Label>
+              <Input
+                id="withdrawTokenAddress"
+                placeholder="0x..."
+                value={withdrawTokenAddress}
+                onChange={(e) => setWithdrawTokenAddress(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="withdrawAmount">Amount (in token units)</Label>
+              <Input
+                id="withdrawAmount"
+                type="number"
+                placeholder="1000"
+                value={withdrawAmount}
+                onChange={(e) => setWithdrawAmount(e.target.value)}
+              />
+            </div>
+            <Button onClick={handleEmergencyWithdraw} disabled={isWritePending || isConfirming} variant="destructive">
+              Emergency Withdraw
+            </Button>
+          </div>
 
-        {/* Dev Wallet Management */}
-        <div className="space-y-2">
-          <h3 className="text-lg font-semibold">Set Dev Wallet</h3>
-          <Label htmlFor="devWalletAddress">New Dev Wallet Address</Label>
-          <Input
-            id="devWalletAddress"
-            placeholder="0x..."
-            value={devWalletAddress}
-            onChange={(e) => setDevWalletAddress(e.target.value)}
-          />
-          <Button
-            onClick={handleSetDevWallet}
-            disabled={isSettingDevWallet || isLoadingSetDevWalletTx}
-            className="w-full"
-          >
-            {isSettingDevWallet || isLoadingSetDevWalletTx ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            Set Dev Wallet
-          </Button>
-        </div>
-
-        <Separator />
-
-        {/* Emergency Controls */}
-        <div className="space-y-2">
-          <h3 className="text-lg font-semibold">Emergency Controls</h3>
-          <div className="flex items-center justify-between">
-            <p>Contract Status: {isLoadingPausedStatus ? "Loading..." : pausedStatus ? "Paused" : "Active"}</p>
-            <div className="flex gap-2">
-              <Button onClick={handlePauseContract} disabled={isPausing || isLoadingPauseTx || pausedStatus}>
-                {isPausing || isLoadingPauseTx ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Pause
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Contract Pause Status</h3>
+            <p className="text-sm text-muted-foreground">
+              Current Status: {isLoadingPaused ? "Loading..." : isPaused ? "Paused" : "Active"}
+            </p>
+            <div className="flex gap-4">
+              <Button
+                onClick={handlePauseContract}
+                disabled={isWritePending || isConfirming || isPaused}
+                variant="outline"
+              >
+                Pause Contract
               </Button>
-              <Button onClick={handleUnpauseContract} disabled={isUnpausing || isLoadingUnpauseTx || !pausedStatus}>
-                {isUnpausing || isLoadingUnpauseTx ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Unpause
+              <Button
+                onClick={() => handleUnpauseContract()}
+                disabled={isWritePending || isConfirming || !isPaused}
+                variant="outline"
+              >
+                Unpause Contract
               </Button>
             </div>
           </div>
-          <Label htmlFor="emergencyWithdrawTokenAddress">Token Address for Emergency Withdraw</Label>
-          <Input
-            id="emergencyWithdrawTokenAddress"
-            placeholder="0x..."
-            value={emergencyWithdrawTokenAddress}
-            onChange={(e) => setEmergencyWithdrawTokenAddress(e.target.value)}
-          />
-          <Label htmlFor="emergencyWithdrawAmount">Amount (in token units)</Label>
-          <Input
-            id="emergencyWithdrawAmount"
-            type="number"
-            placeholder="e.g., 1000"
-            value={emergencyWithdrawAmount}
-            onChange={(e) => setEmergencyWithdrawAmount(e.target.value)}
-          />
-          <Button
-            onClick={handleEmergencyWithdraw}
-            disabled={isEmergencyWithdrawing || isLoadingEmergencyWithdrawTx}
-            className="w-full"
-          >
-            {isEmergencyWithdrawing || isLoadingEmergencyWithdrawTx ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : null}
-            Emergency Withdraw
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+
+          <div className="space-y-2">
+            <Label htmlFor="new-owner">Transfer Ownership</Label>
+            <Input
+              id="new-owner"
+              placeholder="Enter new owner address"
+              value={newOwnerAddress}
+              onChange={(e) => setNewOwnerAddress(e.target.value)}
+            />
+            <Button onClick={handleTransferOwnership} disabled={isLoading}>
+              {isLoading ? "Transferring..." : "Transfer Ownership"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {(isWritePending || isConfirming) && (
+        <p className="text-sm text-muted-foreground">
+          {isWritePending ? "Sending transaction..." : "Confirming transaction..."}
+        </p>
+      )}
+    </div>
   )
 }

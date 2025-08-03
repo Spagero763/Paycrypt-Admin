@@ -1,27 +1,23 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { decodeFunctionData, parseAbi } from "viem"
 
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const { txHash } = await request.json()
+    const { data, abi } = await req.json()
 
-    // This is a simplified example - in a real implementation you would:
-    // 1. Fetch the transaction data from the blockchain
-    // 2. Decode the input data using the contract ABI
-    // 3. Extract the relevant parameters (orderId, requestId, etc.)
-
-    // For now, we'll return mock data
-    const mockDecodedData = {
-      orderId: Math.floor(Math.random() * 1000),
-      requestId: "0x" + Math.random().toString(16).substr(2, 64),
-      functionName: "createOrder",
-      parameters: {
-        tokenAddress: "0x...",
-        amount: "1000000000000000000",
-      },
+    if (!data || !abi) {
+      return NextResponse.json({ error: "Missing data or ABI" }, { status: 400 })
     }
 
-    return NextResponse.json(mockDecodedData)
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to decode transaction" }, { status: 500 })
+    const parsedAbi = parseAbi(abi)
+    const decoded = decodeFunctionData({
+      abi: parsedAbi,
+      data: data,
+    })
+
+    return NextResponse.json({ decoded })
+  } catch (error: any) {
+    console.error("Error decoding transaction:", error)
+    return NextResponse.json({ error: error.message || "Failed to decode transaction" }, { status: 500 })
   }
 }

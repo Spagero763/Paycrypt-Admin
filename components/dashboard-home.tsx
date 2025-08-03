@@ -1,128 +1,204 @@
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { DollarSign, CheckCircle, XCircle, Hash } from "lucide-react"
-import { useReadContract } from "wagmi"
-import { CONTRACT_ABI, CONTRACT_ADDRESS } from "@/lib/contract"
-import { formatUnits } from "viem"
-import { useEffect, useState } from "react"
-import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
+import { RefreshCwIcon } from "lucide-react"
+import { useState, useEffect, useCallback } from "react"
+import { useContractRead } from "@/lib/contract"
+import { useAccount } from "wagmi"
+import { shortenAddress } from "@/lib/utils"
 
-export function DashboardHome() {
-  const [totalVolume, setTotalVolume] = useState("0")
-  const [totalSuccessfulOrders, setTotalSuccessfulOrders] = useState("0")
-  const [totalFailedOrders, setTotalFailedOrders] = useState("0")
-  const [orderCounter, setOrderCounter] = useState("0")
+export function DashboardHomeContent() {
+  const { address, isConnected } = useAccount()
 
-  const {
-    data: volumeData,
-    isLoading: isLoadingVolume,
-    error: errorVolume,
-  } = useReadContract({
-    abi: CONTRACT_ABI,
-    address: CONTRACT_ADDRESS,
-    functionName: "getTotalVolume",
-  })
+  // State for individual metric loading
+  const [loadingTotalSupply, setLoadingTotalSupply] = useState(false)
+  const [loadingBalance, setLoadingBalance] = useState(false)
+  const [loadingOwner, setLoadingOwner] = useState(false)
+  const [loadingName, setLoadingName] = useState(false)
+  const [loadingSymbol, setLoadingSymbol] = useState(false)
 
-  const {
-    data: successfulOrdersData,
-    isLoading: isLoadingSuccessful,
-    error: errorSuccessful,
-  } = useReadContract({
-    abi: CONTRACT_ABI,
-    address: CONTRACT_ADDRESS,
-    functionName: "getTotalSuccessfulOrders",
-  })
+  // Fetch contract data
+  const { data: name, refetch: refetchName } = useContractRead("name")
+  const { data: symbol, refetch: refetchSymbol } = useContractRead("symbol")
+  const { data: totalSupply, refetch: refetchTotalSupply } = useContractRead("totalSupply")
+  const { data: owner, refetch: refetchOwner } = useContractRead("owner")
+  const { data: userBalance, refetch: refetchUserBalance } = useContractRead("balanceOf", [address])
 
-  const {
-    data: failedOrdersData,
-    isLoading: isLoadingFailed,
-    error: errorFailed,
-  } = useReadContract({
-    abi: CONTRACT_ABI,
-    address: CONTRACT_ADDRESS,
-    functionName: "getTotalFailedOrders",
-  })
+  // Function to refetch all data
+  const refetchAllData = useCallback(async () => {
+    if (!isConnected) return
 
-  const {
-    data: orderCounterData,
-    isLoading: isLoadingCounter,
-    error: errorCounter,
-  } = useReadContract({
-    abi: CONTRACT_ABI,
-    address: CONTRACT_ADDRESS,
-    functionName: "getOrderCounter",
-  })
+    setLoadingName(true)
+    setLoadingSymbol(true)
+    setLoadingTotalSupply(true)
+    setLoadingOwner(true)
+    setLoadingBalance(true)
 
+    await Promise.all([refetchName(), refetchSymbol(), refetchTotalSupply(), refetchOwner(), refetchUserBalance()])
+
+    setLoadingName(false)
+    setLoadingSymbol(false)
+    setLoadingTotalSupply(false)
+    setLoadingOwner(false)
+    setLoadingBalance(false)
+  }, [isConnected, refetchName, refetchSymbol, refetchTotalSupply, refetchOwner, refetchUserBalance])
+
+  // Initial data fetch on component mount and when wallet connects
   useEffect(() => {
-    if (volumeData !== undefined) {
-      setTotalVolume(formatUnits(volumeData as bigint, 18)) // Assuming 18 decimals for volume
+    if (isConnected) {
+      refetchAllData()
     }
-    if (successfulOrdersData !== undefined) {
-      setTotalSuccessfulOrders((successfulOrdersData as bigint).toString())
-    }
-    if (failedOrdersData !== undefined) {
-      setTotalFailedOrders((failedOrdersData as bigint).toString())
-    }
-    if (orderCounterData !== undefined) {
-      setOrderCounter((orderCounterData as bigint).toString())
-    }
-
-    if (errorVolume) toast.error("Error fetching total volume", { description: errorVolume.message })
-    if (errorSuccessful) toast.error("Error fetching successful orders", { description: errorSuccessful.message })
-    if (errorFailed) toast.error("Error fetching failed orders", { description: errorFailed.message })
-    if (errorCounter) toast.error("Error fetching order counter", { description: errorCounter.message })
-  }, [
-    volumeData,
-    successfulOrdersData,
-    failedOrdersData,
-    orderCounterData,
-    errorVolume,
-    errorSuccessful,
-    errorFailed,
-    errorCounter,
-  ])
+  }, [isConnected, refetchAllData])
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Volume</CardTitle>
-          <DollarSign className="h-4 w-4 text-muted-foreground" />
+          <CardTitle className="text-sm font-medium">Contract Name</CardTitle>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              setLoadingName(true)
+              refetchName().finally(() => setLoadingName(false))
+            }}
+            disabled={loadingName || !isConnected}
+          >
+            <RefreshCwIcon className={`h-4 w-4 ${loadingName ? "animate-spin" : ""}`} />
+            <span className="sr-only">Refresh Name</span>
+          </Button>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{isLoadingVolume ? "Loading..." : totalVolume}</div>
-          <p className="text-xs text-muted-foreground">Total value processed</p>
+          <div className="text-2xl font-bold">
+            {isConnected ? (loadingName ? "Loading..." : name || "N/A") : "Connect Wallet"}
+          </div>
+          <p className="text-xs text-muted-foreground">Name of the deployed contract.</p>
         </CardContent>
       </Card>
+
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Successful Orders</CardTitle>
-          <CheckCircle className="h-4 w-4 text-muted-foreground" />
+          <CardTitle className="text-sm font-medium">Contract Symbol</CardTitle>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              setLoadingSymbol(true)
+              refetchSymbol().finally(() => setLoadingSymbol(false))
+            }}
+            disabled={loadingSymbol || !isConnected}
+          >
+            <RefreshCwIcon className={`h-4 w-4 ${loadingSymbol ? "animate-spin" : ""}`} />
+            <span className="sr-only">Refresh Symbol</span>
+          </Button>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{isLoadingSuccessful ? "Loading..." : totalSuccessfulOrders}</div>
-          <p className="text-xs text-muted-foreground">Orders completed successfully</p>
+          <div className="text-2xl font-bold">
+            {isConnected ? (loadingSymbol ? "Loading..." : symbol || "N/A") : "Connect Wallet"}
+          </div>
+          <p className="text-xs text-muted-foreground">Symbol of the contract's token.</p>
         </CardContent>
       </Card>
+
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Failed Orders</CardTitle>
-          <XCircle className="h-4 w-4 text-muted-foreground" />
+          <CardTitle className="text-sm font-medium">Total Supply</CardTitle>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              setLoadingTotalSupply(true)
+              refetchTotalSupply().finally(() => setLoadingTotalSupply(false))
+            }}
+            disabled={loadingTotalSupply || !isConnected}
+          >
+            <RefreshCwIcon className={`h-4 w-4 ${loadingTotalSupply ? "animate-spin" : ""}`} />
+            <span className="sr-only">Refresh Total Supply</span>
+          </Button>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{isLoadingFailed ? "Loading..." : totalFailedOrders}</div>
-          <p className="text-xs text-muted-foreground">Orders that did not complete</p>
+          <div className="text-2xl font-bold">
+            {isConnected
+              ? loadingTotalSupply
+                ? "Loading..."
+                : totalSupply !== undefined
+                  ? totalSupply.toString()
+                  : "N/A"
+              : "Connect Wallet"}
+          </div>
+          <p className="text-xs text-muted-foreground">Total tokens in circulation.</p>
         </CardContent>
       </Card>
+
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Order Counter</CardTitle>
-          <Hash className="h-4 w-4 text-muted-foreground" />
+          <CardTitle className="text-sm font-medium">Your Balance</CardTitle>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              setLoadingBalance(true)
+              refetchUserBalance().finally(() => setLoadingBalance(false))
+            }}
+            disabled={loadingBalance || !isConnected}
+          >
+            <RefreshCwIcon className={`h-4 w-4 ${loadingBalance ? "animate-spin" : ""}`} />
+            <span className="sr-only">Refresh Balance</span>
+          </Button>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{isLoadingCounter ? "Loading..." : orderCounter}</div>
-          <p className="text-xs text-muted-foreground">Total orders created</p>
+          <div className="text-2xl font-bold">
+            {isConnected
+              ? loadingBalance
+                ? "Loading..."
+                : userBalance !== undefined
+                  ? userBalance.toString()
+                  : "N/A"
+              : "Connect Wallet"}
+          </div>
+          <p className="text-xs text-muted-foreground">Your token balance.</p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Contract Owner</CardTitle>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              setLoadingOwner(true)
+              refetchOwner().finally(() => setLoadingOwner(false))
+            }}
+            disabled={loadingOwner || !isConnected}
+          >
+            <RefreshCwIcon className={`h-4 w-4 ${loadingOwner ? "animate-spin" : ""}`} />
+            <span className="sr-only">Refresh Owner</span>
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">
+            {isConnected ? (loadingOwner ? "Loading..." : owner ? shortenAddress(owner) : "N/A") : "Connect Wallet"}
+          </div>
+          <p className="text-xs text-muted-foreground">Address of the contract owner.</p>
+        </CardContent>
+      </Card>
+
+      <Card className="col-span-full flex items-center justify-center">
+        <CardContent className="flex flex-col items-center justify-center p-6">
+          <Button
+            onClick={refetchAllData}
+            disabled={
+              !isConnected || loadingName || loadingSymbol || loadingTotalSupply || loadingBalance || loadingOwner
+            }
+          >
+            <RefreshCwIcon
+              className={`mr-2 h-4 w-4 ${loadingName || loadingSymbol || loadingTotalSupply || loadingBalance || loadingOwner ? "animate-spin" : ""}`}
+            />
+            Refresh All Data
+          </Button>
+          <p className="text-xs text-muted-foreground mt-2">Click to refresh all contract data.</p>
         </CardContent>
       </Card>
     </div>
