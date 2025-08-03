@@ -1,28 +1,21 @@
 "use client"
 
-import { useAccount, useConnect, useDisconnect } from "wagmi"
+import { useConnect, useDisconnect, useAccount } from "wagmi"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Wallet, ChevronDown, AlertCircle } from "lucide-react"
-import { useEffect, useState } from "react"
+import { Wallet, ChevronDown, LogOut } from "lucide-react"
+import { useState, useEffect } from "react"
 import { toast } from "sonner"
 
 export function ConnectButton() {
-  const { address, isConnected, connector } = useAccount()
-  const { connect, connectors, isPending, error } = useConnect()
+  const { connectors, connect, isPending } = useConnect()
   const { disconnect } = useDisconnect()
+  const { address, isConnected } = useAccount()
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     setMounted(true)
   }, [])
-
-  useEffect(() => {
-    if (error) {
-      console.error("Wallet connection error:", error)
-      toast.error(`Connection failed: ${error.message}`)
-    }
-  }, [error])
 
   if (!mounted) {
     return (
@@ -35,32 +28,47 @@ export function ConnectButton() {
 
   if (isConnected && address) {
     return (
-      <div className="flex items-center gap-2">
-        <Button variant="outline" onClick={() => disconnect()}>
-          <Wallet className="mr-2 h-4 w-4" />
-          {address.slice(0, 6)}...{address.slice(-4)}
-        </Button>
-        {connector && <span className="text-xs text-muted-foreground">via {connector.name}</span>}
-      </div>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline">
+            <Wallet className="mr-2 h-4 w-4" />
+            {`${address.slice(0, 6)}...${address.slice(-4)}`}
+            <ChevronDown className="ml-2 h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem
+            onClick={() => {
+              disconnect()
+              toast.success("Wallet disconnected")
+            }}
+          >
+            <LogOut className="mr-2 h-4 w-4" />
+            Disconnect
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     )
   }
 
   const availableConnectors = connectors.filter(
-    (connector) => connector.type !== "injected" || typeof window !== "undefined",
+    (connector) => connector.id !== "injected" || typeof window !== "undefined",
   )
 
-  const handleConnect = async (connector: any) => {
-    try {
-      await connect({ connector })
-    } catch (err) {
-      console.error("Connection error:", err)
-      toast.error("Failed to connect wallet. Please try again.")
-    }
-  }
-
   if (availableConnectors.length === 1) {
+    const connector = availableConnectors[0]
     return (
-      <Button onClick={() => handleConnect(availableConnectors[0])} disabled={isPending} className="min-w-[140px]">
+      <Button
+        onClick={() => {
+          try {
+            connect({ connector })
+          } catch (error) {
+            console.error("Connection error:", error)
+            toast.error("Failed to connect wallet")
+          }
+        }}
+        disabled={isPending}
+      >
         <Wallet className="mr-2 h-4 w-4" />
         {isPending ? "Connecting..." : "Connect Wallet"}
       </Button>
@@ -70,32 +78,30 @@ export function ConnectButton() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button disabled={isPending} className="min-w-[140px]">
+        <Button disabled={isPending}>
           <Wallet className="mr-2 h-4 w-4" />
           {isPending ? "Connecting..." : "Connect Wallet"}
           <ChevronDown className="ml-2 h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuContent align="end">
         {availableConnectors.map((connector) => (
           <DropdownMenuItem
-            key={connector.uid}
-            onClick={() => handleConnect(connector)}
-            className="cursor-pointer flex items-center justify-between"
+            key={connector.id}
+            onClick={() => {
+              try {
+                connect({ connector })
+              } catch (error) {
+                console.error("Connection error:", error)
+                toast.error(`Failed to connect with ${connector.name}`)
+              }
+            }}
+            disabled={isPending}
           >
-            <div className="flex items-center">
-              <Wallet className="mr-2 h-4 w-4" />
-              {connector.name}
-            </div>
-            {connector.type === "injected" && <span className="text-xs text-muted-foreground">Browser</span>}
+            <Wallet className="mr-2 h-4 w-4" />
+            {connector.name}
           </DropdownMenuItem>
         ))}
-        {!process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID && (
-          <DropdownMenuItem disabled className="text-muted-foreground">
-            <AlertCircle className="mr-2 h-4 w-4" />
-            WalletConnect unavailable
-          </DropdownMenuItem>
-        )}
       </DropdownMenuContent>
     </DropdownMenu>
   )

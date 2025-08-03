@@ -1,11 +1,14 @@
 "use client"
 
 import type React from "react"
-import { WagmiProvider } from "wagmi"
+
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { WagmiProvider } from "wagmi"
 import { config } from "@/lib/wagmi"
-import { useState, useEffect } from "react"
+import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "sonner"
+import { WalletErrorBoundary } from "@/components/wallet-error-boundary"
+import { useState } from "react"
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -19,22 +22,17 @@ export function Providers({ children }: { children: React.ReactNode }) {
         },
       }),
   )
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  if (!mounted) {
-    return <div className="min-h-screen bg-background">{children}</div>
-  }
 
   return (
-    <WagmiProvider config={config}>
-      <QueryClientProvider client={queryClient}>
-        {children}
-        <Toaster position="top-right" />
-      </QueryClientProvider>
-    </WagmiProvider>
+    <WalletErrorBoundary>
+      <WagmiProvider config={config}>
+        <QueryClientProvider client={queryClient}>
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+            {children}
+            <Toaster position="top-right" />
+          </ThemeProvider>
+        </QueryClientProvider>
+      </WagmiProvider>
+    </WalletErrorBoundary>
   )
 }

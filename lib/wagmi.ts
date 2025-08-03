@@ -1,45 +1,45 @@
-import { createConfig, http } from "wagmi"
-import { base, polygon, mainnet } from "wagmi/chains"
-import { metaMask, walletConnect, injected, coinbaseWallet } from "wagmi/connectors"
+"use client"
 
+import { http, createConfig } from "wagmi"
+import { base, polygon, mainnet } from "wagmi/chains"
+import { injected, metaMask, coinbaseWallet, walletConnect } from "wagmi/connectors"
+
+// Get WalletConnect project ID from environment
 const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID
+
+// Create connectors array
+const connectors = [
+  injected({
+    shimDisconnect: true,
+  }),
+  metaMask({
+    shimDisconnect: true,
+  }),
+  coinbaseWallet({
+    appName: "Paycrypt Admin Dashboard",
+    appLogoUrl: "/placeholder-logo.png",
+  }),
+]
+
+// Only add WalletConnect if project ID is available
+if (projectId) {
+  connectors.push(
+    walletConnect({
+      projectId,
+      metadata: {
+        name: "Paycrypt Admin Dashboard",
+        description: "Admin dashboard for Paycrypt smart contract management",
+        url: typeof window !== "undefined" ? window.location.origin : "https://paycrypt-admin.vercel.app",
+        icons: ["/placeholder-logo.png"],
+      },
+      showQrModal: true,
+    }),
+  )
+}
 
 export const config = createConfig({
   chains: [base, polygon, mainnet],
-  connectors: [
-    // Injected connector for browser wallets (handles multiple wallets gracefully)
-    injected({
-      shimDisconnect: true,
-    }),
-    // MetaMask specific connector
-    metaMask({
-      shimDisconnect: true,
-    }),
-    // Coinbase Wallet
-    coinbaseWallet({
-      appName: "Paycrypt Admin Dashboard",
-      appLogoUrl: "https://paycrypt-admin.vercel.app/icon.png",
-    }),
-    // WalletConnect - only if project ID is available
-    ...(projectId
-      ? [
-          walletConnect({
-            projectId,
-            metadata: {
-              name: "Paycrypt Admin Dashboard",
-              description: "Official admin dashboard for Paycrypt team members",
-              url: typeof window !== "undefined" ? window.location.origin : "https://paycrypt-admin.vercel.app",
-              icons: [
-                typeof window !== "undefined"
-                  ? `${window.location.origin}/icon.png`
-                  : "https://paycrypt-admin.vercel.app/icon.png",
-              ],
-            },
-            showQrModal: true,
-          }),
-        ]
-      : []),
-  ],
+  connectors,
   transports: {
     [base.id]: http(),
     [polygon.id]: http(),
@@ -47,3 +47,9 @@ export const config = createConfig({
   },
   ssr: true,
 })
+
+declare module "wagmi" {
+  interface Register {
+    config: typeof config
+  }
+}

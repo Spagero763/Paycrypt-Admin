@@ -2,8 +2,7 @@
 
 import React from "react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertCircle, RefreshCw } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { AlertTriangle } from "lucide-react"
 
 interface Props {
   children: React.ReactNode
@@ -33,20 +32,12 @@ export class WalletErrorBoundary extends React.Component<Props, State> {
       return (
         <div className="min-h-screen flex items-center justify-center p-4">
           <Alert className="max-w-md">
-            <AlertCircle className="h-4 w-4" />
+            <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Wallet Connection Error</AlertTitle>
-            <AlertDescription className="mt-2">
-              There was an issue connecting to your wallet. This might be due to:
-              <ul className="list-disc list-inside mt-2 space-y-1">
-                <li>Multiple wallet extensions installed</li>
-                <li>Network connectivity issues</li>
-                <li>Wallet extension conflicts</li>
-              </ul>
+            <AlertDescription>
+              There was an issue connecting to your wallet. Please refresh the page and try again. If the problem
+              persists, try disabling other wallet extensions.
             </AlertDescription>
-            <Button onClick={() => window.location.reload()} className="mt-4 w-full" variant="outline">
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Reload Page
-            </Button>
           </Alert>
         </div>
       )
