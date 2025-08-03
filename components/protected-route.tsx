@@ -6,8 +6,10 @@ import { useAccount } from "wagmi"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ConnectButton } from "@/components/connect-button"
-import { AlertTriangle } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
+import { Lock } from "lucide-react"
+import { Loader2 } from "lucide-react" // Loader2 variable is declared here
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isConnected, isConnecting } = useAccount()
@@ -21,39 +23,35 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (isConnecting) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Connecting to wallet...</p>
-        </div>
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950">
+        <Card className="w-full max-w-md text-center">
+          <CardHeader>
+            <CardTitle className="text-2xl font-bold">Connecting Wallet...</CardTitle>
+            <CardDescription>Please wait while we connect to your wallet.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
     )
   }
 
   if (!isConnected) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-muted/20">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20">
-              <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
-            </div>
-            <CardTitle className="text-xl">Paycrypt Team Access Required</CardTitle>
-            <CardDescription>
-              This dashboard is restricted to authorized Paycrypt team members. Please connect your authorized wallet to
-              access the admin interface and manage contract operations.
-            </CardDescription>
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950">
+        <Card className="w-full max-w-md text-center">
+          <CardHeader>
+            <CardTitle className="text-2xl font-bold text-red-500">Access Denied</CardTitle>
+            <CardDescription>You must connect your wallet to access the dashboard.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <ConnectButton />
-            <div className="text-center">
-              <button
-                onClick={() => router.push("/")}
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                ← Back to home
-              </button>
-            </div>
+            <Lock className="h-16 w-16 text-red-400 mx-auto" />
+            <Button asChild className="w-full">
+              <Link href="/">Go to Landing Page</Link>
+            </Button>
           </CardContent>
         </Card>
       </div>

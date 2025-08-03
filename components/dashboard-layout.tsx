@@ -6,26 +6,26 @@ import { ConnectButton } from "@/components/connect-button"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { HomeIcon, MenuIcon, Package2Icon, SettingsIcon, UsersIcon, WalletCardsIcon } from "lucide-react"
+import { Home, Menu, Package2, Settings, Users } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useAccount } from "wagmi"
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname()
   const { isConnected } = useAccount()
   const router = useRouter()
-  const pathname = usePathname()
 
   useEffect(() => {
-    if (!isConnected && pathname !== "/") {
+    if (!isConnected) {
       router.push("/")
     }
-  }, [isConnected, pathname, router])
+  }, [isConnected, router])
 
-  if (!isConnected && pathname !== "/") {
-    return null // Or a loading spinner while redirecting
+  if (!isConnected) {
+    return null // Or a loading spinner, or a message
   }
 
   return (
@@ -34,7 +34,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="flex h-full max-h-screen flex-col gap-2">
           <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
             <Link href="/" className="flex items-center gap-2 font-semibold">
-              <Package2Icon className="h-6 w-6" />
+              <Package2 className="h-6 w-6" />
               <span className="">Paycrypt Admin</span>
             </Link>
           </div>
@@ -46,8 +46,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   pathname === "/dashboard" ? "bg-muted text-primary" : ""
                 }`}
               >
-                <HomeIcon className="h-4 w-4" />
-                Dashboard Home
+                <Home className="h-4 w-4" />
+                Dashboard
               </Link>
               <Link
                 href="/orders"
@@ -55,7 +55,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   pathname === "/orders" ? "bg-muted text-primary" : ""
                 }`}
               >
-                <WalletCardsIcon className="h-4 w-4" />
+                <Package2 className="h-4 w-4" />
                 Order Tools
               </Link>
               <Link
@@ -64,7 +64,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   pathname === "/tokens" ? "bg-muted text-primary" : ""
                 }`}
               >
-                <SettingsIcon className="h-4 w-4" />
+                <Settings className="h-4 w-4" />
                 Token Management
               </Link>
               <Link
@@ -73,7 +73,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   pathname === "/users" ? "bg-muted text-primary" : ""
                 }`}
               >
-                <UsersIcon className="h-4 w-4" />
+                <Users className="h-4 w-4" />
                 User Management
               </Link>
               <Link
@@ -82,7 +82,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   pathname === "/admin" ? "bg-muted text-primary" : ""
                 }`}
               >
-                <SettingsIcon className="h-4 w-4" />
+                <Settings className="h-4 w-4" />
                 Admin Controls
               </Link>
             </nav>
@@ -94,14 +94,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <Sheet>
             <SheetTrigger asChild>
               <Button variant="outline" size="icon" className="shrink-0 md:hidden bg-transparent">
-                <MenuIcon className="h-5 w-5" />
+                <Menu className="h-5 w-5" />
                 <span className="sr-only">Toggle navigation menu</span>
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="flex flex-col">
               <nav className="grid gap-2 text-lg font-medium">
                 <Link href="#" className="flex items-center gap-2 text-lg font-semibold">
-                  <Package2Icon className="h-6 w-6" />
+                  <Package2 className="h-6 w-6" />
                   <span className="sr-only">Paycrypt Admin</span>
                 </Link>
                 <Link
@@ -110,8 +110,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     pathname === "/dashboard" ? "bg-muted text-foreground" : ""
                   }`}
                 >
-                  <HomeIcon className="h-5 w-5" />
-                  Dashboard Home
+                  <Home className="h-5 w-5" />
+                  Dashboard
                 </Link>
                 <Link
                   href="/orders"
@@ -119,7 +119,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     pathname === "/orders" ? "bg-muted text-foreground" : ""
                   }`}
                 >
-                  <WalletCardsIcon className="h-5 w-5" />
+                  <Package2 className="h-5 w-5" />
                   Order Tools
                 </Link>
                 <Link
@@ -128,7 +128,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     pathname === "/tokens" ? "bg-muted text-foreground" : ""
                   }`}
                 >
-                  <SettingsIcon className="h-5 w-5" />
+                  <Settings className="h-5 w-5" />
                   Token Management
                 </Link>
                 <Link
@@ -137,7 +137,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     pathname === "/users" ? "bg-muted text-foreground" : ""
                   }`}
                 >
-                  <UsersIcon className="h-5 w-5" />
+                  <Users className="h-5 w-5" />
                   User Management
                 </Link>
                 <Link
@@ -146,15 +146,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     pathname === "/admin" ? "bg-muted text-foreground" : ""
                   }`}
                 >
-                  <SettingsIcon className="h-5 w-5" />
+                  <Settings className="h-5 w-5" />
                   Admin Controls
                 </Link>
               </nav>
             </SheetContent>
           </Sheet>
           <div className="w-full flex-1">{/* Search or other header content */}</div>
-          <ConnectButton />
           <ThemeToggle />
+          <ConnectButton />
         </header>
         <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">{children}</main>
       </div>

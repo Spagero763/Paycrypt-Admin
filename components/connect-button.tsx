@@ -1,34 +1,33 @@
 "use client"
 
-import { useState } from "react"
-import { useAccount, useConnect, useDisconnect } from "wagmi"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import { Wallet, ChevronDown } from "lucide-react"
-import { formatAddress } from "@/lib/utils"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { useAccount, useConnect, useDisconnect } from "wagmi"
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
+import { Loader2 } from "lucide-react"
 
 export function ConnectButton() {
-  const { address, isConnected } = useAccount()
-  const { connectors, connect } = useConnect()
+  const { address, isConnected, isConnecting } = useAccount()
+  const { connectors, connect, status, error } = useConnect()
   const { disconnect } = useDisconnect()
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+
+  useEffect(() => {
+    if (error) {
+      toast.error("Wallet Connection Error", {
+        description: error.message || "There was an issue connecting to your wallet. Please try again.",
+      })
+    }
+  }, [error])
 
   if (isConnected) {
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" className="flex items-center gap-2 bg-transparent">
-            <Wallet className="h-4 w-4" />
-            {formatAddress(address)}
-            <ChevronDown className="h-4 w-4" />
+          <Button variant="outline" className="truncate max-w-[150px] bg-transparent">
+            {address}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
@@ -39,17 +38,14 @@ export function ConnectButton() {
   }
 
   return (
-    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-      <DialogTrigger asChild>
-        <Button className="flex items-center gap-2">
-          <Wallet className="h-4 w-4" />
-          Connect Wallet
-        </Button>
-      </DialogTrigger>
+    <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+      <Button onClick={() => setIsModalOpen(true)} disabled={isConnecting}>
+        {isConnecting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+        Connect Wallet
+      </Button>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Connect Wallet</DialogTitle>
-          <DialogDescription>Select a wallet to connect to the Paycrypt Team Dashboard.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           {connectors.map((connector) => (
@@ -57,14 +53,15 @@ export function ConnectButton() {
               key={connector.uid}
               onClick={() => {
                 connect({ connector })
-                setIsDialogOpen(false) // Close dialog on connect attempt
+                setIsModalOpen(false) // Close modal after attempting connection
               }}
               variant="outline"
-              className="w-full justify-start"
-              disabled={!connector.ready}
+              disabled={isConnecting}
             >
+              {isConnecting && connector.id === status.connector?.id ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
               {connector.name}
-              {!connector.ready && " (unsupported)"}
             </Button>
           ))}
         </div>

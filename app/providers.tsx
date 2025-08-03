@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { config } from "@/lib/wagmi"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
-import { useState, useEffect } from "react" // Import useEffect
+import { useState, useEffect } from "react"
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -20,14 +20,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
         },
       }),
   )
-  const [mounted, setMounted] = useState(false) // Add mounted state
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    setMounted(true) // Set mounted to true after first render on client
+    setMounted(true)
   }, [])
 
   if (!mounted) {
-    return null // Render nothing on the server, or a loading spinner
+    return null
   }
 
   return (

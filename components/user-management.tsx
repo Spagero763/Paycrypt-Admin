@@ -1,35 +1,41 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useWriteContract, useWaitForTransactionReceipt } from "wagmi"
 import { CONTRACT_ADDRESS, CONTRACT_ABI } from "@/lib/contract"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useToast } from "@/hooks/use-toast"
-import { UserX, UserCheck } from "lucide-react"
+import { Separator } from "@/components/ui/separator"
+import { toast } from "sonner"
+import { Loader2 } from "lucide-react"
 
 export function UserManagement() {
   const [userAddress, setUserAddress] = useState("")
-  const { toast } = useToast()
 
-  const { writeContract, data: hash, isPending } = useWriteContract()
-  const { isLoading: isConfirming } = useWaitForTransactionReceipt({
-    hash,
+  const { writeContract: addToBlacklist, data: hashAddBlacklist, isPending: isAddingToBlacklist } = useWriteContract()
+  const {
+    writeContract: removeFromBlacklist,
+    data: hashRemoveBlacklist,
+    isPending: isRemovingFromBlacklist,
+  } = useWriteContract()
+
+  const { isLoading: isLoadingAddBlacklistTx, isSuccess: isAddBlacklistConfirmed } = useWaitForTransactionReceipt({
+    hash: hashAddBlacklist,
   })
+  const { isLoading: isLoadingRemoveBlacklistTx, isSuccess: isRemoveBlacklistConfirmed } = useWaitForTransactionReceipt(
+    {
+      hash: hashRemoveBlacklist,
+    },
+  )
 
-  const addToBlacklist = () => {
+  const handleAddToBlacklist = () => {
     if (!userAddress) {
-      toast({
-        title: "Error",
-        description: "Please enter a user address",
-        variant: "destructive",
-      })
+      toast.error("Please enter a user address.")
       return
     }
-
-    writeContract({
+    addToBlacklist({
       address: CONTRACT_ADDRESS,
       abi: CONTRACT_ABI,
       functionName: "addToBlacklist",
@@ -37,17 +43,12 @@ export function UserManagement() {
     })
   }
 
-  const removeFromBlacklist = () => {
+  const handleRemoveFromBlacklist = () => {
     if (!userAddress) {
-      toast({
-        title: "Error",
-        description: "Please enter a user address",
-        variant: "destructive",
-      })
+      toast.error("Please enter a user address.")
       return
     }
-
-    writeContract({
+    removeFromBlacklist({
       address: CONTRACT_ADDRESS,
       abi: CONTRACT_ABI,
       functionName: "removeFromBlacklist",
@@ -55,46 +56,68 @@ export function UserManagement() {
     })
   }
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">User Access Management</h1>
-        <p className="text-muted-foreground">
-          Manage user access controls and blacklist settings for the Paycrypt payment system.
-        </p>
-      </div>
+  useEffect(() => {
+    if (isAddBlacklistConfirmed) {
+      toast.success("User added to blacklist!", { description: `Tx Hash: ${hashAddBlacklist}` })
+      setUserAddress("")
+    }
+    if (isRemoveBlacklistConfirmed) {
+      toast.success("User removed from blacklist!", { description: `Tx Hash: ${hashRemoveBlacklist}` })
+      setUserAddress("")
+    }
+  }, [isAddBlacklistConfirmed, isRemoveBlacklistConfirmed, hashAddBlacklist, hashRemoveBlacklist])
 
-      <Card className="max-w-md">
-        <CardHeader>
-          <CardTitle>Blacklist Management</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <Label htmlFor="userAddress">User Address</Label>
-            <Input
-              id="userAddress"
-              placeholder="0x..."
-              value={userAddress}
-              onChange={(e) => setUserAddress(e.target.value)}
-            />
-          </div>
-          <div className="grid gap-2">
-            <Button
-              onClick={addToBlacklist}
-              disabled={isPending || isConfirming}
-              variant="destructive"
-              className="w-full"
-            >
-              <UserX className="mr-2 h-4 w-4" />
-              Add to Blacklist
-            </Button>
-            <Button onClick={removeFromBlacklist} disabled={isPending || isConfirming} className="w-full">
-              <UserCheck className="mr-2 h-4 w-4" />
-              Remove from Blacklist
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>User Management</CardTitle>
+        <CardDescription>Manage user blacklist status.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Add to Blacklist */}
+        <div className="space-y-2">
+          <h3 className="text-lg font-semibold">Add User to Blacklist</h3>
+          <Label htmlFor="blacklistAddress">User Address</Label>
+          <Input
+            id="blacklistAddress"
+            placeholder="0x..."
+            value={userAddress}
+            onChange={(e) => setUserAddress(e.target.value)}
+          />
+          <Button
+            onClick={handleAddToBlacklist}
+            disabled={isAddingToBlacklist || isLoadingAddBlacklistTx}
+            className="w-full"
+          >
+            {isAddingToBlacklist || isLoadingAddBlacklistTx ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Add to Blacklist
+          </Button>
+        </div>
+
+        <Separator />
+
+        {/* Remove from Blacklist */}
+        <div className="space-y-2">
+          <h3 className="text-lg font-semibold">Remove User from Blacklist</h3>
+          <Label htmlFor="removeBlacklistAddress">User Address</Label>
+          <Input
+            id="removeBlacklistAddress"
+            placeholder="0x..."
+            value={userAddress}
+            onChange={(e) => setUserAddress(e.target.value)}
+          />
+          <Button
+            onClick={handleRemoveFromBlacklist}
+            disabled={isRemovingFromBlacklist || isLoadingRemoveBlacklistTx}
+            className="w-full"
+          >
+            {isRemovingFromBlacklist || isLoadingRemoveBlacklistTx ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : null}
+            Remove from Blacklist
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   )
 }

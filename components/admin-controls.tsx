@@ -1,44 +1,65 @@
 "use client"
 
-import { useState } from "react"
-import { useWriteContract, useWaitForTransactionReceipt, useReadContract } from "wagmi"
-import { CONTRACT_ADDRESS, CONTRACT_ABI } from "@/lib/contract"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useToast } from "@/hooks/use-toast"
-import { Shield, ShieldOff, AlertTriangle, UserPlus, UserMinus } from "lucide-react"
-import { parseUnits } from "viem"
+import { Separator } from "@/components/ui/separator"
+import { useState, useEffect } from "react"
+import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi"
+import { CONTRACT_ABI, CONTRACT_ADDRESS } from "@/lib/contract"
+import { toast } from "sonner"
+import { Loader2 } from "lucide-react"
 
 export function AdminControls() {
   const [adminAddress, setAdminAddress] = useState("")
-  const [withdrawTokenAddress, setWithdrawTokenAddress] = useState("")
-  const [withdrawAmount, setWithdrawAmount] = useState("")
-  const { toast } = useToast()
+  const [devWalletAddress, setDevWalletAddress] = useState("")
+  const [emergencyWithdrawTokenAddress, setEmergencyWithdrawTokenAddress] = useState("")
+  const [emergencyWithdrawAmount, setEmergencyWithdrawAmount] = useState("")
 
-  const { writeContract, data: hash, isPending } = useWriteContract()
-  const { isLoading: isConfirming } = useWaitForTransactionReceipt({
-    hash,
-  })
+  const { writeContract: addAdmin, data: hashAddAdmin, isPending: isAddingAdmin } = useWriteContract()
+  const { writeContract: removeAdmin, data: hashRemoveAdmin, isPending: isRemovingAdmin } = useWriteContract()
+  const { writeContract: setDevWallet, data: hashSetDevWallet, isPending: isSettingDevWallet } = useWriteContract()
+  const {
+    writeContract: emergencyWithdraw,
+    data: hashEmergencyWithdraw,
+    isPending: isEmergencyWithdrawing,
+  } = useWriteContract()
+  const { writeContract: pauseContract, data: hashPause, isPending: isPausing } = useWriteContract()
+  const { writeContract: unpauseContract, data: hashUnpause, isPending: isUnpausing } = useWriteContract()
 
-  const { data: isPaused } = useReadContract({
-    address: CONTRACT_ADDRESS,
+  const { data: pausedStatus, isLoading: isLoadingPausedStatus } = useReadContract({
     abi: CONTRACT_ABI,
+    address: CONTRACT_ADDRESS,
     functionName: "paused",
   })
 
-  const addAdmin = () => {
+  const { isLoading: isLoadingAddAdminTx, isSuccess: isAddAdminConfirmed } = useWaitForTransactionReceipt({
+    hash: hashAddAdmin,
+  })
+  const { isLoading: isLoadingRemoveAdminTx, isSuccess: isRemoveAdminConfirmed } = useWaitForTransactionReceipt({
+    hash: hashRemoveAdmin,
+  })
+  const { isLoading: isLoadingSetDevWalletTx, isSuccess: isSetDevWalletConfirmed } = useWaitForTransactionReceipt({
+    hash: hashSetDevWallet,
+  })
+  const { isLoading: isLoadingEmergencyWithdrawTx, isSuccess: isEmergencyWithdrawConfirmed } =
+    useWaitForTransactionReceipt({
+      hash: hashEmergencyWithdraw,
+    })
+  const { isLoading: isLoadingPauseTx, isSuccess: isPauseConfirmed } = useWaitForTransactionReceipt({
+    hash: hashPause,
+  })
+  const { isLoading: isLoadingUnpauseTx, isSuccess: isUnpauseConfirmed } = useWaitForTransactionReceipt({
+    hash: hashUnpause,
+  })
+
+  const handleAddAdmin = () => {
     if (!adminAddress) {
-      toast({
-        title: "Error",
-        description: "Please enter an admin address",
-        variant: "destructive",
-      })
+      toast.error("Please enter an admin address.")
       return
     }
-
-    writeContract({
+    addAdmin({
       address: CONTRACT_ADDRESS,
       abi: CONTRACT_ABI,
       functionName: "addAdmin",
@@ -46,17 +67,12 @@ export function AdminControls() {
     })
   }
 
-  const removeAdmin = () => {
+  const handleRemoveAdmin = () => {
     if (!adminAddress) {
-      toast({
-        title: "Error",
-        description: "Please enter an admin address",
-        variant: "destructive",
-      })
+      toast.error("Please enter an admin address.")
       return
     }
-
-    writeContract({
+    removeAdmin({
       address: CONTRACT_ADDRESS,
       abi: CONTRACT_ABI,
       functionName: "removeAdmin",
@@ -64,153 +80,186 @@ export function AdminControls() {
     })
   }
 
-  const pauseContract = () => {
-    writeContract({
-      address: CONTRACT_ADDRESS,
-      abi: CONTRACT_ABI,
-      functionName: "pause",
-    })
-  }
-
-  const unpauseContract = () => {
-    writeContract({
-      address: CONTRACT_ADDRESS,
-      abi: CONTRACT_ABI,
-      functionName: "unpause",
-    })
-  }
-
-  const emergencyWithdraw = () => {
-    if (!withdrawTokenAddress || !withdrawAmount) {
-      toast({
-        title: "Error",
-        description: "Please enter token address and amount",
-        variant: "destructive",
-      })
+  const handleSetDevWallet = () => {
+    if (!devWalletAddress) {
+      toast.error("Please enter a new dev wallet address.")
       return
     }
+    setDevWallet({
+      address: CONTRACT_ADDRESS,
+      abi: CONTRACT_ABI,
+      functionName: "setDevWallet",
+      args: [devWalletAddress as `0x${string}`],
+    })
+  }
 
-    const amountInWei = parseUnits(withdrawAmount, 18)
-
-    writeContract({
+  const handleEmergencyWithdraw = () => {
+    if (!emergencyWithdrawTokenAddress || !emergencyWithdrawAmount) {
+      toast.error("Please enter token address and amount for emergency withdrawal.")
+      return
+    }
+    // Assuming 18 decimals for the amount for simplicity, adjust if needed
+    emergencyWithdraw({
       address: CONTRACT_ADDRESS,
       abi: CONTRACT_ABI,
       functionName: "emergencyWithdrawToken",
-      args: [withdrawTokenAddress as `0x${string}`, amountInWei],
+      args: [emergencyWithdrawTokenAddress as `0x${string}`, BigInt(emergencyWithdrawAmount)],
     })
   }
 
+  const handlePauseContract = () => {
+    pauseContract({
+      address: CONTRACT_ADDRESS,
+      abi: CONTRACT_ABI,
+      functionName: "pause",
+      args: [],
+    })
+  }
+
+  const handleUnpauseContract = () => {
+    unpauseContract({
+      address: CONTRACT_ADDRESS,
+      abi: CONTRACT_ABI,
+      functionName: "unpause",
+      args: [],
+    })
+  }
+
+  useEffect(() => {
+    if (isAddAdminConfirmed) {
+      toast.success("Admin added successfully!", { description: `Tx Hash: ${hashAddAdmin}` })
+      setAdminAddress("")
+    }
+    if (isRemoveAdminConfirmed) {
+      toast.success("Admin removed successfully!", { description: `Tx Hash: ${hashRemoveAdmin}` })
+      setAdminAddress("")
+    }
+    if (isSetDevWalletConfirmed) {
+      toast.success("Dev wallet updated!", { description: `Tx Hash: ${hashSetDevWallet}` })
+      setDevWalletAddress("")
+    }
+    if (isEmergencyWithdrawConfirmed) {
+      toast.success("Emergency withdrawal successful!", { description: `Tx Hash: ${hashEmergencyWithdraw}` })
+      setEmergencyWithdrawTokenAddress("")
+      setEmergencyWithdrawAmount("")
+    }
+    if (isPauseConfirmed) {
+      toast.success("Contract paused!", { description: `Tx Hash: ${hashPause}` })
+    }
+    if (isUnpauseConfirmed) {
+      toast.success("Contract unpaused!", { description: `Tx Hash: ${hashUnpause}` })
+    }
+  }, [
+    isAddAdminConfirmed,
+    isRemoveAdminConfirmed,
+    isSetDevWalletConfirmed,
+    isEmergencyWithdrawConfirmed,
+    isPauseConfirmed,
+    isUnpauseConfirmed,
+    hashAddAdmin,
+    hashRemoveAdmin,
+    hashSetDevWallet,
+    hashEmergencyWithdraw,
+    hashPause,
+    hashUnpause,
+  ])
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">System Administration</h1>
-        <p className="text-muted-foreground">
-          Emergency controls, team member management, and critical system operations for Paycrypt.
-        </p>
-      </div>
-
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Admin Management</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="adminAddress">Admin Address</Label>
-              <Input
-                id="adminAddress"
-                placeholder="0x..."
-                value={adminAddress}
-                onChange={(e) => setAdminAddress(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Button onClick={addAdmin} disabled={isPending || isConfirming} className="w-full">
-                <UserPlus className="mr-2 h-4 w-4" />
-                Add Admin
-              </Button>
-              <Button
-                onClick={removeAdmin}
-                disabled={isPending || isConfirming}
-                variant="destructive"
-                className="w-full"
-              >
-                <UserMinus className="mr-2 h-4 w-4" />
-                Remove Admin
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Emergency Controls</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Contract Status:</span>
-              <span className={`text-sm ${isPaused ? "text-red-600" : "text-green-600"}`}>
-                {isPaused ? "Paused" : "Active"}
-              </span>
-            </div>
-            <div className="grid gap-2">
-              <Button
-                onClick={pauseContract}
-                disabled={isPending || isConfirming || isPaused}
-                variant="destructive"
-                className="w-full"
-              >
-                <ShieldOff className="mr-2 h-4 w-4" />
-                Pause Contract
-              </Button>
-              <Button onClick={unpauseContract} disabled={isPending || isConfirming || !isPaused} className="w-full">
-                <Shield className="mr-2 h-4 w-4" />
-                Unpause Contract
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="md:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <AlertTriangle className="mr-2 h-5 w-5 text-red-600" />
-              Emergency Withdraw
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <Label htmlFor="withdrawTokenAddress">Token Address</Label>
-                <Input
-                  id="withdrawTokenAddress"
-                  placeholder="0x..."
-                  value={withdrawTokenAddress}
-                  onChange={(e) => setWithdrawTokenAddress(e.target.value)}
-                />
-              </div>
-              <div>
-                <Label htmlFor="withdrawAmount">Amount</Label>
-                <Input
-                  id="withdrawAmount"
-                  placeholder="1000"
-                  value={withdrawAmount}
-                  onChange={(e) => setWithdrawAmount(e.target.value)}
-                />
-              </div>
-            </div>
-            <Button
-              onClick={emergencyWithdraw}
-              disabled={isPending || isConfirming}
-              variant="destructive"
-              className="w-full"
-            >
-              <AlertTriangle className="mr-2 h-4 w-4" />
-              Emergency Withdraw
+    <Card>
+      <CardHeader>
+        <CardTitle>Admin Controls</CardTitle>
+        <CardDescription>Manage contract administrators, dev wallet, and emergency functions.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Admin Management */}
+        <div className="space-y-2">
+          <h3 className="text-lg font-semibold">Admin Management</h3>
+          <Label htmlFor="adminAddress">Admin Address</Label>
+          <Input
+            id="adminAddress"
+            placeholder="0x..."
+            value={adminAddress}
+            onChange={(e) => setAdminAddress(e.target.value)}
+          />
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <Button onClick={handleAddAdmin} disabled={isAddingAdmin || isLoadingAddAdminTx}>
+              {isAddingAdmin || isLoadingAddAdminTx ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Add Admin
             </Button>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+            <Button onClick={handleRemoveAdmin} disabled={isRemovingAdmin || isLoadingRemoveAdminTx}>
+              {isRemovingAdmin || isLoadingRemoveAdminTx ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Remove Admin
+            </Button>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Dev Wallet Management */}
+        <div className="space-y-2">
+          <h3 className="text-lg font-semibold">Set Dev Wallet</h3>
+          <Label htmlFor="devWalletAddress">New Dev Wallet Address</Label>
+          <Input
+            id="devWalletAddress"
+            placeholder="0x..."
+            value={devWalletAddress}
+            onChange={(e) => setDevWalletAddress(e.target.value)}
+          />
+          <Button
+            onClick={handleSetDevWallet}
+            disabled={isSettingDevWallet || isLoadingSetDevWalletTx}
+            className="w-full"
+          >
+            {isSettingDevWallet || isLoadingSetDevWalletTx ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Set Dev Wallet
+          </Button>
+        </div>
+
+        <Separator />
+
+        {/* Emergency Controls */}
+        <div className="space-y-2">
+          <h3 className="text-lg font-semibold">Emergency Controls</h3>
+          <div className="flex items-center justify-between">
+            <p>Contract Status: {isLoadingPausedStatus ? "Loading..." : pausedStatus ? "Paused" : "Active"}</p>
+            <div className="flex gap-2">
+              <Button onClick={handlePauseContract} disabled={isPausing || isLoadingPauseTx || pausedStatus}>
+                {isPausing || isLoadingPauseTx ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Pause
+              </Button>
+              <Button onClick={handleUnpauseContract} disabled={isUnpausing || isLoadingUnpauseTx || !pausedStatus}>
+                {isUnpausing || isLoadingUnpauseTx ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Unpause
+              </Button>
+            </div>
+          </div>
+          <Label htmlFor="emergencyWithdrawTokenAddress">Token Address for Emergency Withdraw</Label>
+          <Input
+            id="emergencyWithdrawTokenAddress"
+            placeholder="0x..."
+            value={emergencyWithdrawTokenAddress}
+            onChange={(e) => setEmergencyWithdrawTokenAddress(e.target.value)}
+          />
+          <Label htmlFor="emergencyWithdrawAmount">Amount (in token units)</Label>
+          <Input
+            id="emergencyWithdrawAmount"
+            type="number"
+            placeholder="e.g., 1000"
+            value={emergencyWithdrawAmount}
+            onChange={(e) => setEmergencyWithdrawAmount(e.target.value)}
+          />
+          <Button
+            onClick={handleEmergencyWithdraw}
+            disabled={isEmergencyWithdrawing || isLoadingEmergencyWithdrawTx}
+            className="w-full"
+          >
+            {isEmergencyWithdrawing || isLoadingEmergencyWithdrawTx ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : null}
+            Emergency Withdraw
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   )
 }

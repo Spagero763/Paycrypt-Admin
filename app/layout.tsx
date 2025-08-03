@@ -8,7 +8,7 @@ const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "Paycrypt Team Dashboard",
-  description: "Admin dashboard for the Paycrypt team to manage smart contracts.",
+  description: "Official admin dashboard for Paycrypt team members",
     generator: 'v0.dev'
 }
 
