@@ -51,30 +51,28 @@ export function ConnectButton() {
     )
   }
 
+  // Filter out injected if window is not defined (SSR)
   const availableConnectors = connectors.filter(
     (connector) => connector.id !== "injected" || typeof window !== "undefined",
   )
 
+  // If only one connector is available, show a direct button
   if (availableConnectors.length === 1) {
     const connector = availableConnectors[0]
     return (
       <Button
         onClick={() => {
-          try {
-            connect({ connector })
-          } catch (error) {
-            console.error("Connection error:", error)
-            toast.error("Failed to connect wallet")
-          }
+          connect({ connector })
         }}
         disabled={isPending}
       >
         <Wallet className="mr-2 h-4 w-4" />
-        {isPending ? "Connecting..." : "Connect Wallet"}
+        {isPending ? "Connecting..." : `Connect with ${connector.name}`}
       </Button>
     )
   }
 
+  // If multiple connectors, show a dropdown
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -89,12 +87,7 @@ export function ConnectButton() {
           <DropdownMenuItem
             key={connector.id}
             onClick={() => {
-              try {
-                connect({ connector })
-              } catch (error) {
-                console.error("Connection error:", error)
-                toast.error(`Failed to connect with ${connector.name}`)
-              }
+              connect({ connector })
             }}
             disabled={isPending}
           >

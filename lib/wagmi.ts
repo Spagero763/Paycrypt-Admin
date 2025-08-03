@@ -2,22 +2,15 @@
 
 import { http, createConfig } from "wagmi"
 import { base, polygon, mainnet } from "wagmi/chains"
-import { injected, metaMask, coinbaseWallet, walletConnect } from "wagmi/connectors"
+import { metaMask, walletConnect } from "wagmi/connectors"
 
 // Get WalletConnect project ID from environment
 const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID
 
 // Create connectors array
 const connectors = [
-  injected({
-    shimDisconnect: true,
-  }),
   metaMask({
-    shimDisconnect: true,
-  }),
-  coinbaseWallet({
-    appName: "Paycrypt Admin Dashboard",
-    appLogoUrl: "/placeholder-logo.png",
+    shimDisconnect: true, // Helps prevent conflicts with other injected wallets
   }),
 ]
 
@@ -32,7 +25,7 @@ if (projectId) {
         url: typeof window !== "undefined" ? window.location.origin : "https://paycrypt-admin.vercel.app",
         icons: ["/placeholder-logo.png"],
       },
-      showQrModal: true,
+      showQrModal: true, // Show QR modal for WalletConnect
     }),
   )
 }
@@ -45,7 +38,7 @@ export const config = createConfig({
     [polygon.id]: http(),
     [mainnet.id]: http(),
   },
-  ssr: true,
+  ssr: true, // Enable server-side rendering
 })
 
 declare module "wagmi" {

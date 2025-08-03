@@ -7,7 +7,6 @@ import { WagmiProvider } from "wagmi"
 import { config } from "@/lib/wagmi"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "sonner"
-import { WalletErrorBoundary } from "@/components/wallet-error-boundary"
 import { useState } from "react"
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -24,15 +23,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
   )
 
   return (
-    <WalletErrorBoundary>
-      <WagmiProvider config={config}>
-        <QueryClientProvider client={queryClient}>
-          <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-            {children}
-            <Toaster position="top-right" />
-          </ThemeProvider>
-        </QueryClientProvider>
-      </WagmiProvider>
-    </WalletErrorBoundary>
+    <WagmiProvider config={config}>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          {children}
+          <Toaster position="top-right" />
+        </ThemeProvider>
+      </QueryClientProvider>
+    </WagmiProvider>
   )
 }
