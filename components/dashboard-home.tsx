@@ -59,13 +59,13 @@ export function DashboardHome() {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{isBalanceLoading ? "Loading..." : userBalance?.toString() || "0"}</div>
-          <p className="text-xs text-muted-foreground">Your current token holdings</p>
+          <p className="text-xs text-muted-foreground">Your current token holding iss</p>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
+          <CardTitle className="text-sm font-medium">Total Orders created</CardTitle>
           <svg
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 24 24"
