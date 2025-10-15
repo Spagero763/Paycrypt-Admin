@@ -17,24 +17,17 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const router = useRouter()
 
   useEffect(() => {
-    if (isDisconnected) {
+    if (isDisconnected || !isConnected) {
       toast({
         title: "Wallet Disconnected",
         description: "Please connect your wallet to access the dashboard.",
         variant: "destructive",
       })
-      router.push("/") // Redirect to landing page
+      router.replace("/") // Hard redirect to landing page to prevent back nav bypass
     }
-  }, [isDisconnected, router])
+  }, [isDisconnected, isConnected, router])
 
-  if (!isConnected) {
-    // Optionally show a loading state or a message while redirecting
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p>Connecting to wallet or redirecting...</p>
-      </div>
-    )
-  }
+  if (!isConnected) return null
 
   return <WalletErrorBoundaryWrapper>{children}</WalletErrorBoundaryWrapper>
 }
