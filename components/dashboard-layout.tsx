@@ -11,7 +11,6 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { ConnectButton } from "@/components/connect-button"
-import { useAccount } from "wagmi"
 import { ProtectedRoute } from "@/components/protected-route"
 
 interface DashboardLayoutProps {
@@ -20,7 +19,6 @@ interface DashboardLayoutProps {
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname()
-  const { isConnected } = useAccount()
 
   const navItems = [
     {
